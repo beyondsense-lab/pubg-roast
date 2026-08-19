@@ -1,0 +1,26 @@
+{
+  "name": "pubg-roast",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro build && wrangler dev",
+    "deploy": "astro build && wrangler deploy",
+    "db:init:local": "wrangler d1 execute pubg-roast --local --file=./schema.sql",
+    "db:init:remote": "wrangler d1 execute pubg-roast --remote --file=./schema.sql",
+    "cf-typegen": "wrangler types"
+  },
+  "dependencies": {
+    "astro": "^4.16.0",
+    "@astrojs/cloudflare": "^11.1.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  },
+  "engines": {
+    "node": ">=18.17.1"
+  }
+}

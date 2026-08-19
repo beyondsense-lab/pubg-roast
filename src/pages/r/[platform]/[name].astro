@@ -1,0 +1,172 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import RoastCardComponent from '../../../components/RoastCard.astro';
+import { getRoastForPlayer } from '../../../lib/getRoast';
+import { PubgApiError, resolveApiKey } from '../../../lib/pubgApi';
+import type { Platform } from '../../../lib/types';
+
+export const prerender = false;
+
+const VALID_PLATFORMS = new Set(['steam', 'psn', 'xbox', 'kakao', 'stadia']);
+const CARDS_PER_PAGE = 1;
+
+/** Builds a compact numbered pager: always shows first/last, a window
+ *  around the current page, and "…" gaps for anything skipped. */
+function buildPagerItems(current: number, total: number): Array<{ type: 'page'; num: number } | { type: 'gap' }> {
+  const items: Array<{ type: 'page'; num: number } | { type: 'gap' }> = [];
+  const spread = 1;
+  let lastShown = 0;
+
+  for (let n = 1; n <= total; n++) {
+    const isEdge = n === 1 || n === total;
+    const isNearCurrent = Math.abs(n - current) <= spread;
+    if (isEdge || isNearCurrent) {
+      if (lastShown && n - lastShown > 1) items.push({ type: 'gap' });
+      items.push({ type: 'page', num: n });
+      lastShown = n;
+    }
+  }
+  return items;
+}
+
+const { platform: platformParam, name } = Astro.params;
+const platform = (VALID_PLATFORMS.has(platformParam ?? '') ? platformParam : 'steam') as Platform;
+const playerName = decodeURIComponent(name ?? '');
+
+const env = Astro.locals.runtime.env;
+
+// TEMP DEBUG: never logs/exposes the actual key, only whether it's present,
+// what shape the binding is, and roughly how long it is — to tell "missing
+// binding" apart from "wrong value" without printing anything sensitive.
+const keyBindingType = typeof env.PUBG_API_KEY;
+let keyPresent = false;
+let keyLength = 0;
+let keyPreview = 'n/a';
+try {
+  const resolved = await resolveApiKey(env.PUBG_API_KEY);
+  keyPresent = resolved.length > 0;
+  keyLength = resolved.length;
+  keyPreview = keyPresent ? `${resolved.slice(0, 4)}…${resolved.slice(-4)}` : 'n/a';
+} catch {
+  // leave defaults — resolution itself failed, which is informative on its own
+}
+
+let roast;
+let fetchError: string | null = null;
+let fetchErrorDetail: string = '';
+
+try {
+  roast = await getRoastForPlayer(env, playerName, platform);
+} catch (err) {
+  if (err instanceof PubgApiError) {
+    fetchError = err.status === 404 ? 'not_found' : err.status === 429 ? 'rate_limited' : 'unknown';
+    fetchErrorDetail = `PubgApiError ${err.status}: ${err.message} | binding type: ${keyBindingType}, key present: ${keyPresent}, length: ${keyLength}, preview: ${keyPreview}`;
+  } else {
+    fetchError = 'unknown';
+    fetchErrorDetail = `${err instanceof Error ? `${err.name}: ${err.message}` : String(err)} | binding type: ${keyBindingType}, key present: ${keyPresent}, length: ${keyLength}`;
+  }
+  console.error('Roast fetch failed:', fetchErrorDetail);
+}
+
+if (fetchError) {
+  // TEMP DEBUG: surfaces the real error on the homepage instead of just a
+  // generic message, so it's visible without digging through log streams.
+  // Remove the `detail` param once the underlying issue is fixed.
+  return Astro.redirect(`/?error=${fetchError}&detail=${encodeURIComponent(fetchErrorDetail)}`);
+}
+
+const pageParam = Number(Astro.url.searchParams.get('page') ?? '1');
+const totalPages = Math.max(1, Math.ceil(roast!.cards.length / CARDS_PER_PAGE));
+const page = Math.min(Math.max(1, isNaN(pageParam) ? 1 : pageParam), totalPages);
+const start = (page - 1) * CARDS_PER_PAGE;
+const pageCards = roast!.cards.slice(start, start + CARDS_PER_PAGE);
+const pagerItems = buildPagerItems(page, totalPages);
+
+const shareUrl = new URL(Astro.url.pathname, Astro.url.origin).toString();
+const scoreColor =
+  roast!.roastScore >= 60 ? 'var(--danger)' : roast!.roastScore >= 35 ? 'var(--flare)' : 'var(--ok)';
+---
+<Layout title={`${roast!.playerName}'s Roast — ${roast!.roastScore}/100`} description={`${roast!.playerName} scored ${roast!.roastScore}/100 on the PUBG Roast meter.`}>
+  <section class="roast-head">
+    <div class="wrap">
+      <div class="row">
+        <div>
+          <h1 class="player-name">{roast!.playerName}</h1>
+          <div class="player-meta">
+            {platform.toUpperCase()} · {roast!.mainMode.toUpperCase()} main · Season {roast!.seasonId.split('-').pop()}
+            {roast!.cacheHit && ' · cached result'}
+          </div>
+          <div class="roast-title">{roast!.roastTitle}</div>
+        </div>
+        <div class="seal" style={`border-color:${scoreColor}; color:${scoreColor}`}>
+          <div class="score">{roast!.roastScore}</div>
+          <div class="label">Roast Score</div>
+        </div>
+      </div>
+
+      <div class="share-bar">
+        <div class="share-url">{shareUrl}</div>
+        <button class="copy-btn" id="share-link-btn" data-copy={shareUrl} type="button">Copy link</button>
+        <a class="btn ghost" href="/">Roast someone else</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="cards">
+    <div class="wrap" style="display:grid; gap:18px;">
+      {pageCards.map((card) => (
+        <RoastCardComponent
+          card={card}
+          shareText={`${roast!.playerName} — ${card.headline} (${card.statLine}) via PUBG Roast: ${shareUrl}`}
+        />
+      ))}
+    </div>
+  </section>
+
+  <div class="wrap">
+    <nav class="pagination">
+      <div class="pager">
+        <a
+          class={`arrow ${page <= 1 ? 'disabled' : ''}`}
+          href={`?page=${page - 1}`}
+          aria-disabled={page <= 1}
+          aria-label="Previous card"
+        >←</a>
+
+        {pagerItems.map((item) =>
+          item.type === 'gap' ? (
+            <span class="gap">…</span>
+          ) : (
+            <a
+              class={item.num === page ? 'current' : ''}
+              href={`?page=${item.num}`}
+              aria-current={item.num === page ? 'page' : undefined}
+            >{item.num}</a>
+          )
+        )}
+
+        <a
+          class={`arrow ${page >= totalPages ? 'disabled' : ''}`}
+          href={`?page=${page + 1}`}
+          aria-disabled={page >= totalPages}
+          aria-label="Next card"
+        >→</a>
+      </div>
+      <span class="page-info">Card {page} of {totalPages}</span>
+    </nav>
+  </div>
+</Layout>
+
+<script>
+  const shareBtn = document.getElementById('share-link-btn');
+  shareBtn?.addEventListener('click', async () => {
+    const text = shareBtn.getAttribute('data-copy') ?? '';
+    try {
+      await navigator.clipboard.writeText(text);
+      shareBtn.textContent = 'Copied ✓';
+      setTimeout(() => (shareBtn.textContent = 'Copy link'), 1600);
+    } catch {
+      // ignore
+    }
+  });
+</script>

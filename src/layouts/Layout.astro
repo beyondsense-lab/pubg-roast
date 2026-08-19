@@ -1,0 +1,40 @@
+---
+import '../styles/global.css';
+import Loader from '../components/Loader.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'Find out which weapons, stats, and habits your squad is actually bad at.' } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#08060f" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%2308060f%22/><text x=%2250%22 y=%2268%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22%236f5cf5%22>R</text></svg>" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="brand" href="/"><span class="dot"></span>PUBG ROAST</a>
+        <span class="tagline">Combat debriefs, unfiltered</span>
+      </div>
+    </header>
+    <slot />
+    <footer>
+      <div class="wrap">
+        Stats pulled from the official PUBG API. Roast scores are opinionated heuristics, not official rankings — take it as well as you'd take a squad wipe.
+      </div>
+    </footer>
+    <Loader />
+  </body>
+</html>

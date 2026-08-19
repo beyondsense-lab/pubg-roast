@@ -1,0 +1,40 @@
+---
+import type { RoastCard } from '../lib/types';
+
+interface Props {
+  card: RoastCard;
+  shareText: string;
+}
+
+const { card, shareText } = Astro.props;
+const severityOpacity = (card.severity / 5).toFixed(2);
+---
+<article class="card" style={`--sev: ${severityOpacity}`}>
+  <div class="card-dots"><span></span><span></span><span></span></div>
+  <div class="card-top">
+    <div class="card-emoji">{card.emoji}</div>
+    <div class="card-title">{card.category}</div>
+  </div>
+  <h3 class="card-headline">{card.headline}</h3>
+  <p class="card-body">{card.body}</p>
+  <div class="card-stat">{card.statLine}</div>
+  <div class="card-actions">
+    <button class="copy-btn" data-copy={shareText} type="button">Copy this roast</button>
+  </div>
+</article>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const text = btn.dataset.copy ?? '';
+      try {
+        await navigator.clipboard.writeText(text);
+        const original = btn.textContent;
+        btn.textContent = 'Copied ✓';
+        setTimeout(() => (btn.textContent = original), 1600);
+      } catch {
+        // Clipboard API unavailable — silently ignore, button just won't confirm.
+      }
+    });
+  });
+</script>

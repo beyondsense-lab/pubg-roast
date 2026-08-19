@@ -1,0 +1,65 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const error = Astro.url.searchParams.get('error');
+const detail = Astro.url.searchParams.get('detail');
+const platforms = [
+  { value: 'steam', label: 'Steam' },
+  { value: 'psn', label: 'PlayStation' },
+  { value: 'xbox', label: 'Xbox' },
+  { value: 'kakao', label: 'Kakao' },
+  { value: 'stadia', label: 'Stadia' },
+];
+---
+<Layout title="PUBG Roast — Find out who's actually carrying">
+  <section class="hero">
+    <div class="wrap">
+      <div class="eyebrow">// Combat Debrief Generator</div>
+      <h1>Find out who's <em>carrying</em> and who's just <em>looting boxes.</em></h1>
+      <p class="sub">
+        Drop a friend's PUBG name in and get a stat-backed roast: worst gun, softest
+        landings, most embarrassing headshot rate, and a Roast Score to settle the
+        argument for good.
+      </p>
+
+      <form class="search-form" action="/api/go" method="get">
+        <div class="field brutal-input-wrap">
+          <label class="field-label" for="player-name">Target</label>
+          <input
+            class="brutal-input"
+            id="player-name"
+            type="text"
+            name="name"
+            placeholder="Type player name"
+            required
+            minlength="1"
+            maxlength="32"
+            autocomplete="off"
+          />
+        </div>
+        <div class="field">
+          <label class="field-label" for="platform">Shard</label>
+          <select class="brutal-select" id="platform" name="platform">
+            {platforms.map((p) => <option value={p.value}>{p.label}</option>)}
+          </select>
+        </div>
+        <button class="btn" type="submit">Roast Them</button>
+      </form>
+
+      {error && (
+        <div class="error-box">
+          {error === 'not_found'
+            ? "Couldn't find that player on that platform. Check the spelling and shard."
+            : error === 'rate_limited'
+            ? 'The PUBG API is rate-limiting us right now — give it a minute and try again.'
+            : 'Something went wrong fetching that player. Try again shortly.'}
+          {detail && (
+            <div style="margin-top:8px; font-size:12px; opacity:0.8; word-break:break-word;">
+              Debug detail: {detail}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  </section>
+</Layout>

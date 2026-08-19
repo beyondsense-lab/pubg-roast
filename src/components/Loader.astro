@@ -1,0 +1,38 @@
+<div class="loader-overlay" id="loader-overlay">
+  <div class="pubg-loader"></div>
+  <div class="loader-label">Pulling combat records…</div>
+</div>
+
+<script>
+  const overlay = document.getElementById('loader-overlay');
+
+  function showLoader() {
+    overlay?.classList.add('active');
+  }
+
+  // Any form submit on the site is a real navigation (GET forms here,
+  // no client-side fetch) — show the overlay immediately so the wait on
+  // the PUBG API round-trip doesn't feel dead.
+  document.querySelectorAll('form').forEach((form) => {
+    form.addEventListener('submit', () => showLoader());
+  });
+
+  // Internal links that navigate (pagination, "roast someone else", etc.)
+  // Skip anything that isn't a real page navigation: copy buttons aren't
+  // <a> tags so they're unaffected, but be defensive about target=_blank,
+  // download links, and disabled/pointer-events-none pager cells anyway.
+  document.querySelectorAll('a[href]').forEach((link) => {
+    const href = link.getAttribute('href') ?? '';
+    const isExternal = link.getAttribute('target') === '_blank';
+    const isHash = href.startsWith('#');
+    const isDisabled = link.classList.contains('disabled');
+
+    if (isExternal || isHash || isDisabled) return;
+
+    link.addEventListener('click', () => showLoader());
+  });
+
+  // Safety net: if the user navigates back via bfcache, make sure the
+  // overlay isn't stuck visible from a previous in-flight navigation.
+  window.addEventListener('pageshow', () => overlay?.classList.remove('active'));
+</script>

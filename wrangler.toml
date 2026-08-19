@@ -1,0 +1,29 @@
+name = "pubg-roast"
+main = "./dist/_worker.js/index.js"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+# Astro's SSR build output ("./dist") also contains the _worker.js entry
+# itself and a _routes.json file - both are excluded from static-asset
+# upload via public/.assetsignore, so only real static files get served.
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+
+# D1 database binding.
+# 1. Create the database:      npx wrangler d1 create pubg-roast
+# 2. Copy the "database_id" the command prints into the line below.
+# 3. Apply the schema:         npm run db:init:remote   (and db:init:local for local dev)
+[[d1_databases]]
+binding = "DB"
+database_name = "pubg-roast"
+database_id = "24fdf95b-b938-447a-9aca-cc1fa5d85c5a"
+
+# Non-secret config. Secrets (PUBG_API_KEY) are set separately, never here:
+#   npx wrangler secret put PUBG_API_KEY
+[vars]
+CACHE_TTL_HOURS = "6"
+DEFAULT_PLATFORM = "steam"

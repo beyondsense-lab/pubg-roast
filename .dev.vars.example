@@ -1,0 +1,4 @@
+# Copy this file to .dev.vars for local development (astro dev / wrangler pages dev).
+# NEVER commit the real .dev.vars file — it's already in .gitignore.
+
+PUBG_API_KEY=your-pubg-developer-api-key-here
